@@ -1,0 +1,25 @@
+{
+  "name": "gulp-env",
+  "version": "0.0.0",
+  "description": "Add env vars from a .env file to your process.env",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/moveline/gulp-env.git"
+  },
+  "keywords": [
+    "gulp",
+    "gulp-env",
+    "env",
+    "process.env"
+  ],
+  "author": "Moveline",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/moveline/gulp-env/issues"
+  },
+  "homepage": "https://github.com/moveline/gulp-env"
+}
