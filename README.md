@@ -37,7 +37,7 @@ gulp.task('nodemon', function() {
 });
 
 gulp.task('set-env', function () {
-	env({file: "./.env"});
+	env({file: ".env"});
 });
 
 gulp.task('default', ['set-env', 'nodemon'])
