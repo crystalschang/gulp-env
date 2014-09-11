@@ -42,3 +42,30 @@ gulp.task('set-env', function () {
 
 gulp.task('default', ['set-env', 'nodemon'])
 ```
+
+TODO
+========
+
+For now, this plug-in is stupid simple.
+
+Seriously, this is all of the code!
+
+```
+'use strict';
+
+module.exports = function(options) {
+  if (options.file) {
+    var env = require("./" + options.file);
+
+    for (var prop in env) {
+      process.env[prop] = env[prop]
+    }
+  }
+}
+```
+
+TODO:
+
+- handle non-`module.exports` env files
+- allow for simple variable setting (i.e. `env({PORT: 4000})`, etc.)
+- test coverage
