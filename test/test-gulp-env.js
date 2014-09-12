@@ -6,11 +6,34 @@ describe('gulp-env', function() {
     expect(env).to.exist;
   });
 
-  it('should add process.env vars from a local file', function() {
-    env({file: "test/mock-env"})
+  beforeEach(function() {
+    delete process.env.STARK;
+    delete process.env.BARATHEON;
+    delete process.env.LANNISTER;
+  });
+
+  it('should add process.env vars from a local module', function() {
+    expect(process.env.STARK).not.to.equal("direwolf");
+    expect(process.env.BARATHEON).not.to.equal("stag");
+    expect(process.env.LANNISTER).not.to.equal("lion");
+
+    env({file: "test/mock-env-module"})
 
     expect(process.env.STARK).to.equal("direwolf");
     expect(process.env.BARATHEON).to.equal("stag");
     expect(process.env.LANNISTER).to.equal("lion");
   });
+
+  it('should add process.env vars from a local json file', function() {
+    expect(process.env.STARK).not.to.equal("direwolf");
+    expect(process.env.BARATHEON).not.to.equal("stag");
+    expect(process.env.LANNISTER).not.to.equal("lion");
+
+    env({file: "test/mock-env-json.json"})
+
+    expect(process.env.STARK).to.equal("direwolf");
+    expect(process.env.BARATHEON).to.equal("stag");
+    expect(process.env.LANNISTER).to.equal("lion");
+  });
+
 })
