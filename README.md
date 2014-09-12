@@ -1,7 +1,7 @@
 gulp-env
 ========
 
-Add env vars from a .env or .env.json file to your process.env
+Add env vars to your process.env
 
 
 Install
@@ -14,24 +14,7 @@ npm i --save-dev gulp-env
 Usage
 ========
 
-gulp-env handles two kinds of .env files:
-
-```
-//.env.json
-{
-	MONGO_URI: "mongodb://localhost:27017/testdb
-}
-```
-
-```
-//.env
-module.exports = {
-	MONGO_URI: "mongodb://localhost:27017/testdb
-}
-```
-
-You can add the properties of this object to your process.env via
-`env({file: ".env"})` or `env({file: ".env.json"})` in your gulpfile.
+##Quick Example
 
 ```
 //gulpfile.js
@@ -44,34 +27,64 @@ gulp.task('nodemon', function() {
 });
 
 gulp.task('set-env', function () {
-	env({file: ".env.json"});
+	env({
+		file: ".env.json",
+		vars: {
+			//any vars you want to overwrite
+		}
+	});
 });
 
 gulp.task('default', ['set-env', 'nodemon'])
 ```
 
+##The Details
+
+gulp-env handles two options: `file` and `vars`.
+
+###options.file
+
+The `file` option uses `require()` under the hood to pull in data and assign it to
+the `process.env`. `gulp-env` has test coverage for two options: JSON, and a JS
+object exported as a module.
+
+```
+//.env.json
+{
+	MONGO_URI: "mongodb://localhost:27017/testdb
+}
+
+//.env
+module.exports = {
+	MONGO_URI: "mongodb://localhost:27017/testdb
+}
+
+//gulpfile.js
+var env = require('gulp-env')
+env({
+	file: ".env"
+	//OR
+	file: ".env.json"
+})
+```
+
+###options.vars
+
+Properties passed to the vars option will be set on process.env as well.
+These properties will overwrite the external file's properties.
+
+```
+//gulpfile.js
+var env = require('gulp-env')
+env({
+	vars: {
+		MONGO_URI: "mongodb://localhost:27017/testdb-for-british-eyes-only",
+		PORT: 9001
+	}
+})
+```
+
 TODO
 ========
 
-For now, this plug-in is stupid simple.
-
-Seriously, this is all of the code!
-
-```
-'use strict';
-
-module.exports = function(options) {
-  if (options.file) {
-    var env = require(process.cwd() + "/" + options.file);
-
-    for (var prop in env) {
-      process.env[prop] = env[prop]
-    }
-  }
-}
-```
-
-TODO:
-
 - handle ini files
-- allow for simple variable setting (i.e. `env({PORT: 4000})`, etc.)
