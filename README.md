@@ -31,7 +31,7 @@ gulp.task('set-env', function () {
 		file: ".env.json",
 		vars: {
 			//any vars you want to overwrite
-    }
+		}
 	});
 });
 
@@ -78,9 +78,9 @@ These properties will overwrite the external file's properties.
 var env = require('gulp-env')
 env({
 	vars: {
-    MONGO_URI: "mongodb://localhost:27017/testdb-for-british-eyes-only",
-    PORT: 9001
-  }
+		MONGO_URI: "mongodb://localhost:27017/testdb-for-british-eyes-only",
+		PORT: 9001
+	}
 })
 ```
 
