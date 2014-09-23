@@ -3,6 +3,13 @@ gulp-env
 
 Add env vars to your process.env
 
+Benefit
+========
+
+Often, two processes running at the same time need different environmental variables
+(for example: running tests and a server from the same gulp process). 
+`gulp-env` helps simplify that problem, by letting you establish your env vars whenever you'd like.
+You can set values from an external json file, or hardcode the vars directly from an env({vars:{}}) object.
 
 Install
 ========
