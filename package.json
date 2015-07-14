@@ -1,7 +1,7 @@
 {
   "name": "gulp-env",
-  "version": "0.3.0",
-  "description": "Add env vars from a .env file to your process.env",
+  "version": "0.4.0",
+  "description": "Add env vars to your process.env",
   "main": "index.js",
   "scripts": {
     "test": "mocha test/*.js"
@@ -18,8 +18,8 @@
     "gulpfriendly"
   ],
   "contributors": [
-    "Isiah Meadows <isiahmeadows@gmail.com> (https://github.com/impinball)",
-    "Moveline"
+    "Moveline",
+    "Isiah Meadows <isiahmeadows@gmail.com> (https://github.com/impinball)"
   ],
   "license": "MIT",
   "bugs": {

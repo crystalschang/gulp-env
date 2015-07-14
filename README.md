@@ -3,10 +3,10 @@ gulp-env
 
 Add or modify variables in your `process.env`.
 
-Benefit
+Purpose
 ========
 
-Often, two processes running at the same time need different environmental variables (for example: running tests and a server from the same gulp process). `gulp-env` helps simplify that problem, by letting you establish your env vars whenever you'd like, in a simpler interface. You can set values from an external `.json`, `.ini`, or other file, or hardcode the vars directly by using `env({vars:{}})`.
+Often, two processes running at the same time need different environmental variables (for example: running tests and a server from the same gulp process). `gulp-env` helps simplify that problem, by letting you establish your env vars whenever you'd like, in a simpler interface. You can set values from an external `.json`, `.ini`, or other file, or programmatically set them directly by using `env({vars:{}})` or `env.set(vars)`.
 
 Install
 ========
@@ -18,11 +18,11 @@ npm i --save-dev gulp-env
 The TypeScript definition file is available in gulp-env.d.ts within the base directory.
 
 Usage
-========
+======
 
-## Example
+### Example
 
-Nodemon server
+Nodemon server:
 
 ```js
 // gulpfile.js
@@ -32,7 +32,7 @@ var env = require('gulp-env');
 
 gulp.task('nodemon', function() {
   env({
-    file: ".env.json",
+    file: '.env.json',
     vars: {
       // any variables you want to overwrite
     }
@@ -45,52 +45,76 @@ gulp.task('nodemon', function() {
   });
 });
 
-gulp.task('default', ['nodemon'])
+gulp.task('default', ['nodemon']);
 ```
 
-ES6 web development
+ES6 web development:
 
 ```js
-var gulp = require('gulp');
-var browserify = require('browserify');
-var transform = require('vinyl-transform');
-var babel = require('gulp-babel');
-var concat = require('gulp-concat');
-var jshint = require('gulp-jshint');
-var uglify = require('gulp-uglify');
-var sourcemaps = require('gulp-sourcemaps');
+import gulp from 'gulp';
+import browserify from 'browserify';
+import transform from 'vinyl-transform';
+import babel from 'gulp-babel';
+import concat from 'gulp-concat';
+import jshint from 'gulp-jshint';
+import uglify from 'gulp-uglify';
+import sourcemaps from 'gulp-sourcemaps';
 
-gulp.task('debug', function() {
+gulp.task('debug', () => {
+  const envs = env.set({
+    NODE_ENV: 'debug'
+  });
   return gulp.src('src/main.js')
-    .pipe(env.set({
-      NODE_ENV: 'debug'
-    }))
+    .pipe(envs)
     .pipe(babel({optional: [
       'utility.inlineEnvironmentVariables'
     ]}))
     .pipe(uglify())
-    .pipe(transform(function(file) {
-      return browserify(file).bundle();
-    }))
+    .pipe(transform(file => browserify(file).bundle()))
+    .pipe(envs.reset)
     .pipe(gulp.dest('dist'));
 });
+```
+
+Simple CoffeeScript library's gulpfile:
+
+```coffee
+gulp = require 'gulp'
+coffee = require 'gulp-coffee'
+mocha = require 'gulp-mocha'
+env = require 'gulp-env'
+CSON = require 'cson-safe'
+
+gulp.task 'compile', ->
+  gulp.src('src')
+    .pipe coffee()
+    .pipe gulp.dest('dest')
+
+gulp.task 'test', ['compile'], ->
+  gulp.src('test')
+    .pipe envs = env
+      file: 'config.cson'
+      handler: CSON.parse
+    .pipe mocha()
+    .pipe envs.reset
 ```
 
 ## Details
 
 `gulp-env` has full test coverage for JSON files, JS modules, INI files, and custom handlers. The entire API below is covered as well. It can also be used in the middle of a Gulp pipeline, where this returns a no-op stream. Note that the `process.env` changes happen synchronously, at the time when the function is called.
 
-Read a file and set `process.env` accordingly:
+Read a file and set `process.env` accordingly. Both of these forms are equivalent.
 
 ```js
-env(file: string);
+env(file: string) => EnvStream
+env({file: string}) => EnvStream
 ```
 
 Set one or more hardcoded values in `process.env` directly.
 
 ```js
-env({vars: Object});
-env.set(vars: Object);
+env({vars: Object}) => EnvStream
+env.set(vars: Object) => EnvStream
 ```
 
 Parse a file, overriding some of its variables.
@@ -102,7 +126,7 @@ env({
 
   // overrides
   vars: Object,
-});
+}) => EnvStream
 ```
 
 Parse a file with a custom parser.
@@ -117,7 +141,7 @@ env({
 
   // optional overrides
   vars?: Object,
-});
+}) => EnvStream
 ```
 
 Parse a file as a different type.
@@ -132,7 +156,7 @@ env({
 
   // overrides
   vars?: Object,
-});
+}) => EnvStream
 ```
 
 ### `file`, `options.file`
@@ -176,11 +200,11 @@ env({
   vars: {
     MONGO_URI: "mongodb://localhost:27017/testdb-for-british-eyes-only",
     PORT: 9001
-	}
+  }
 });
 ```
 
-For the case of just setting environment variables, you can use `env.set`.
+For the case of just setting environment variables programmatically, you can use `env.set`.
 
 ```js
 // These two are equivalent. They both can also be used in Gulp streams.
@@ -228,7 +252,7 @@ env({
 
 ### `options.type`
 
-Treats the file input as if its extension was `type`. It doesn't work for `require`d files, since Node.js doesn't have hooks to do that, but it currently works for `json` and `ini` types. Others may potentially be added over time.
+Treats the file input as if its extension was `type`. It doesn't work for `require`d files, since Node.js doesn't have hooks to do that, but it currently works for `json` and `ini` types. Others may potentially be added over time. If you think another one should be added, please, by all means, submit a PR.
 
 ```js
 var env = require('gulp-env');
@@ -244,3 +268,69 @@ env({
   type: '.ini',
 });
 ```
+
+### EnvStream
+
+Instances of this interface are returned for `env()` and `env.set()`. These are standard through2 object streams with the following extra methods:
+
+- Reset the environment to its former state synchronously. This is designed to be most useful outside of gulpfiles. It returns a boolean, true if any properties were reset, false otherwise. Pass a truthy value as an argument to forcefully restore, i.e. ignore conflicts.
+
+  ```js
+  envs.restore(force?: boolean) => boolean
+  ```
+
+- Reset the environment to its former state. Similar to `.restore()`, but is called after the incoming stream is flushed, i.e. after all previous Gulp plugins have had their effect on the stream. This is otherwise a no-op through2 object stream. The second version is analogous to `envs.restore(true)`
+
+  ```js
+  envs.reset => stream.Readable, stream.Writable
+  envs.reset.force => stream.Readable, stream.Writable
+  ```
+
+Note that such environments can be nested. For example, the following will work:
+
+```js
+process.env.NODE_ENV // undefined
+var env1 = env.set({NODE_ENV: "whatever"});
+process.env.NODE_ENV // "whatever"
+var env2 = env.set({NODE_ENV: "something else"});
+process.env.NODE_ENV // "something else"
+env2.restore();
+process.env.NODE_ENV // "whatever"
+env1.restore();
+process.env.NODE_ENV // undefined
+```
+
+Now, if two settings are restored out of order, conflicting keys (where the currently set value is not the same as the originally set for that version) are simply left as-is. This is the same with externally changed environment variables.
+
+```js
+// unbalanced modifications
+process.env.NODE_ENV // undefined
+var env1 = env.set({NODE_ENV: "whatever"});
+process.env.NODE_ENV // "whatever"
+var env2 = env.set({NODE_ENV: "something else"});
+process.env.NODE_ENV // "something else"
+env1.restore();
+process.env.NODE_ENV // "something else"
+env2.restore();
+process.env.NODE_ENV // "whatever"
+
+// external modifications
+process.env.NODE_ENV // undefined
+var env1 = env.set({NODE_ENV: "whatever"});
+process.env.NODE_ENV // "whatever"
+process.env.NODE_ENV = "something else";
+env1.restore();
+process.env.NODE_ENV // "something else"
+```
+
+Issues
+=======
+
+Submit a new issue here in the [issue tracker](https://github.com/moveline/gulp-env/issues/new)
+
+Contributing
+=============
+
+This aims for full test coverage. If you see something missing, please, by all means, [send a PR](https://github.com/moveline/gulp-env/compare).
+
+To run the tests, run `npm test`. The tests and their dependencies are written in `test/**`.

@@ -5,26 +5,35 @@ declare module "gulp-env" {
     [key: string]: any;
   }
 
+  interface ForceableStream extends NodeJS.ReadWriteStream {
+    force: boolean;
+  }
+
+  interface EnvStream extends NodeJS.ReadWriteStream {
+    reset: ForceableStream;
+    restore(force?: boolean): boolean;
+  }
+
   interface Env {
-    (file: string): NodeJS.ReadWriteStream;
+    (file: string): EnvStream;
 
     (options: {
       vars: EnvironmentMapping,
-    }): NodeJS.ReadWriteStream;
+    }): EnvStream;
 
     (options: {
       file: string,
       handler?: (contents: string) => EnvironmentMapping,
       vars?: EnvironmentMapping,
-    }): NodeJS.ReadWriteStream;
+    }): EnvStream;
 
     (options: {
       file: string,
       type: string,
       vars?: EnvironmentMapping,
-    }): NodeJS.ReadWriteStream;
+    }): EnvStream;
 
-    set(vars: EnvironmentMapping): NodeJS.ReadWriteStream;
+    set(vars: EnvironmentMapping): EnvStream;
   }
 
   export default Env;

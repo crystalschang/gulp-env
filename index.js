@@ -3,7 +3,7 @@
 var fs = require('fs');
 var path = require('path');
 var ini = require('ini');
-var through = require('through2');
+var through2 = require('through2');
 var hasOwn = Object.prototype.hasOwnProperty;
 var exts = require.extensions;
 
@@ -90,11 +90,73 @@ function env(options) {
   return set(added ? vars : null);
 };
 
+function noopPipe(chunk, enc, cb) {
+  cb(null, chunk);
+}
+
+function noopFlush(cb) {
+  cb()
+}
+
+function defaultRestore() {
+  return false;
+}
+
+function once(f) {
+  var reference = function () {
+    f();
+    reference = noopFlush;
+    return reference.apply(this, arguments);
+  };
+  return reference;
+}
+
+function makeOld(vars) {
+  var old = {};
+  for (var i in vars) {
+    if (hasOwn.call(vars, i) && hasOwn.call(process.env, i)) {
+      old[i] = process.env[i];
+    }
+  }
+  return old;
+}
+
+function restoreOld(vars, old, force) {
+  var res = false;
+  for (var i in vars) {
+    if (hasOwn.call(vars, i)) {
+      if (force) {
+        if (hasOwn.call(old, i)) {
+          process.env[i] = old[i];
+          res = true;
+        } else {
+          delete process.env[i];
+        }
+      } else if (process.env[i] === '' + vars[i]) {
+        if (hasOwn.call(old, i)) {
+          process.env[i] = old[i];
+          res = true;
+        } else {
+          delete process.env[i];
+        }
+      }
+    }
+  }
+  return res;
+}
+
 env.set = set;
 function set(vars) {
+  var ret = through2.obj();
+
   if (vars != null) {
+    var old = makeOld(vars);
     extend(process.env, vars);
+    var restore = ret.restore = restoreOld.bind(null, vars, old);
+
+    ret.reset = through2.obj(noopPipe, once(restore));
+    ret.reset.force = through2.obj(noopPipe, once(restore.bind(null, true)));
   }
 
-  return through.obj();
+  return ret;
 }
