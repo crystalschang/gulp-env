@@ -1,26 +1,30 @@
 /// <reference path="./node.d.ts"/>
 
 declare module "gulp-env" {
+  interface EnvironmentMapping {
+    [key: string]: any;
+  }
+
   interface Env {
     (file: string): NodeJS.ReadWriteStream;
 
     (options: {
-      vars: {[key: string]: any},
+      vars: EnvironmentMapping,
     }): NodeJS.ReadWriteStream;
 
     (options: {
       file: string,
-      handler?: (contents: string) => {[key: string]: any},
-      vars?: {[key: string]: any},
+      handler?: (contents: string) => EnvironmentMapping,
+      vars?: EnvironmentMapping,
     }): NodeJS.ReadWriteStream;
 
     (options: {
       file: string,
       type: string,
-      vars?: {[key: string]: any},
+      vars?: EnvironmentMapping,
     }): NodeJS.ReadWriteStream;
 
-    set(vars: {[key: string]: any}): NodeJS.ReadWriteStream;
+    set(vars: EnvironmentMapping): NodeJS.ReadWriteStream;
   }
 
   export default Env;
