@@ -5,18 +5,22 @@ var expect = require('chai').expect;
 var fs = require('fs');
 var resolve = require('path').resolve;
 var gulp = require('gulp');
+var through2 = require('through2');
 
 describe('gulp-env', function() {
+  function prepVars() {
+    delete process.env.STARK;
+    delete process.env.BARATHEON;
+    delete process.env.LANNISTER;
+  }
+
   it('should exist', function() {
     expect(env).to.exist;
   });
 
   describe('reads properties from files', function() {
-    afterEach(function() {
-      delete process.env.STARK;
-      delete process.env.BARATHEON;
-      delete process.env.LANNISTER;
-    });
+    beforeEach(prepVars);
+    afterEach(prepVars);
 
     it('should add process.env vars from a local module', function() {
       expect(process.env.STARK).not.to.exist
@@ -144,11 +148,8 @@ describe('gulp-env', function() {
   });
 
   describe('reads properties from files and vars object', function() {
-    afterEach(function() {
-      delete process.env.STARK;
-      delete process.env.BARATHEON;
-      delete process.env.LANNISTER;
-    });
+    beforeEach(prepVars);
+    afterEach(prepVars);
 
     it('should overwrite files with inline-vars by default', function() {
       expect(process.env.STARK).not.to.exist
@@ -167,11 +168,8 @@ describe('gulp-env', function() {
   });
 
   describe('calls and reads the result of handlers', function() {
-    afterEach(function() {
-      delete process.env.STARK;
-      delete process.env.BARATHEON;
-      delete process.env.LANNISTER;
-    });
+    beforeEach(prepVars);
+    afterEach(prepVars);
 
     it('should call the handler with exactly two arguments', function() {
       var called = false;
@@ -239,18 +237,314 @@ describe('gulp-env', function() {
       expect(process.env.STARK).to.equal("bar");
       expect(process.env.BARATHEON).to.equal("bar");
     });
+
+    it('should return a value that has own property `.restore`', function() {
+      expect(env.set({})).to.have.ownProperty('restore');
+    });
+
+    it('should return a value with a `.restore` method', function() {
+      expect(env.set({}).restore).to.be.a('function');
+    });
+  });
+
+  describe('`.restore()` on return value', function() {
+    beforeEach(prepVars);
+    afterEach(prepVars);
+
+    it('should be able to reset', function() {
+      var envs = env.set({
+        STARK: "direwolf",
+        BARATHEON: "stag",
+        LANNISTER: "lion",
+      });
+      expect(process.env.STARK).to.equal("direwolf");
+      expect(process.env.BARATHEON).to.equal("stag");
+      expect(process.env.LANNISTER).to.equal("lion");
+      envs.restore();
+      expect(process.env.STARK).to.not.exist;
+      expect(process.env.BARATHEON).to.not.exist;
+      expect(process.env.LANNISTER).to.not.exist;
+    });
+
+    it('should return true if any keys were restored', function() {
+      process.env.STARK = "blarg";
+      var envs = env.set({
+        STARK: "direwolf",
+      });
+      var result = envs.restore();
+      expect(process.env.STARK).to.equal("blarg");
+      expect(result).to.be.true;
+    });
+
+    it('should return false if no keys were restored', function() {
+      var envs = env.set({
+        STARK: "direwolf",
+      });
+      var result = envs.restore();
+      expect(process.env.STARK).to.not.exist;
+      expect(result).to.be.false;
+    });
+
+    it('should not attempt to overwrite manually changed keys', function() {
+      var envs = env.set({
+        STARK: "direwolf",
+        BARATHEON: "stag",
+        LANNISTER: "lion",
+      });
+      expect(process.env.STARK).to.equal("direwolf");
+      expect(process.env.BARATHEON).to.equal("stag");
+      expect(process.env.LANNISTER).to.equal("lion");
+      process.env.STARK = "nope";
+      envs.restore();
+      expect(process.env.STARK).to.equal("nope");
+      expect(process.env.BARATHEON).to.not.exist;
+      expect(process.env.LANNISTER).to.not.exist;
+    });
+
+    it('should be nestable in scope', function() {
+      var envs = env.set({
+        STARK: "direwolf",
+        BARATHEON: "stag",
+        LANNISTER: "lion",
+      });
+
+      expect(process.env.STARK).to.equal("direwolf");
+      expect(process.env.BARATHEON).to.equal("stag");
+      expect(process.env.LANNISTER).to.equal("lion");
+
+      var next = env.set({
+        STARK: "spam",
+        BARATHEON: "nope",
+        LANNISTER: "hello",
+      });
+
+      expect(process.env.STARK).to.equal("spam");
+      expect(process.env.BARATHEON).to.equal("nope");
+      expect(process.env.LANNISTER).to.equal("hello");
+
+      next.restore();
+
+      expect(process.env.STARK).to.equal("direwolf");
+      expect(process.env.BARATHEON).to.equal("stag");
+      expect(process.env.LANNISTER).to.equal("lion");
+
+      envs.restore();
+
+      expect(process.env.STARK).to.not.exist;
+      expect(process.env.BARATHEON).to.not.exist;
+      expect(process.env.LANNISTER).to.not.exist;
+    });
+
+    it('should not correct out-of-order restores', function() {
+      var envs = env.set({
+        STARK: "direwolf",
+        BARATHEON: "stag",
+        LANNISTER: "lion",
+      });
+
+      expect(process.env.STARK).to.equal("direwolf");
+      expect(process.env.BARATHEON).to.equal("stag");
+      expect(process.env.LANNISTER).to.equal("lion");
+
+      var next = env.set({
+        STARK: "spam",
+        BARATHEON: "nope",
+        LANNISTER: "hello",
+      });
+
+      expect(process.env.STARK).to.equal("spam");
+      expect(process.env.BARATHEON).to.equal("nope");
+      expect(process.env.LANNISTER).to.equal("hello");
+
+      envs.restore();
+
+      expect(process.env.STARK).to.equal("spam");
+      expect(process.env.BARATHEON).to.equal("nope");
+      expect(process.env.LANNISTER).to.equal("hello");
+    });
+
+    function testTruthy(item, string) {
+      it('should ignore conflicts when passed a truthy argument (' + string +
+          ')', function() {
+        var envs = env.set({
+          STARK: "direwolf",
+          BARATHEON: "stag",
+          LANNISTER: "lion",
+        });
+        expect(process.env.STARK).to.equal("direwolf");
+        expect(process.env.BARATHEON).to.equal("stag");
+        expect(process.env.LANNISTER).to.equal("lion");
+        process.env.STARK = "nope";
+        envs.restore(true);
+        expect(process.env.STARK).to.not.exist;
+        expect(process.env.BARATHEON).to.not.exist;
+        expect(process.env.LANNISTER).to.not.exist;
+      });
+    }
+
+    testTruthy(1, '1');
+    testTruthy({}, '{}');
+    testTruthy([], '[]');
+    testTruthy(true, 'true');
   });
 
   describe('gulp plugin behavior', function() {
-    afterEach(function() {
-      delete process.env.STARK;
-      delete process.env.BARATHEON;
-      delete process.env.LANNISTER;
-    });
+    beforeEach(prepVars);
+    afterEach(prepVars);
 
     it('should work as a gulp plugin', function(done) {
       gulp.src('test/mock-env-json.txt')
-        .pipe(env('test/mock-env-json.json'))
+        .pipe(env({
+          vars: {
+            STARK: "direwolf",
+            BARATHEON: "stag",
+            LANNISTER: "lion",
+          },
+        }))
+        .on('end', done)
+        .on('data', function() {})
+        .on('error', done);
+    });
+
+    it('should work as a gulp plugin with `.set`', function(done) {
+      gulp.src('test/mock-env-json.txt')
+        .pipe(env.set({
+          STARK: "direwolf",
+          BARATHEON: "stag",
+          LANNISTER: "lion",
+        }))
+        .on('end', done)
+        .on('data', function() {})
+        .on('error', done);
+    });
+
+    it('should return a value that has own property `.reset`', function() {
+      expect(env.set({})).to.have.ownProperty('reset');
+    });
+
+    it('should return a value with a `.reset` read/write stream', function() {
+      var reset = env.set({}).reset;
+      expect(reset._read).to.be.a('function');
+      expect(reset._write).to.be.a('function');
+    });
+
+    it('should be able to reset with `.reset`', function(done) {
+      var envs = env.set({
+        STARK: "direwolf",
+        BARATHEON: "stag",
+        LANNISTER: "lion",
+      });
+      gulp.src('test/mock-env-json.txt')
+        .pipe(envs)
+        .pipe(through2.obj(function(chunk, enc, callback) {
+          // Pass through
+          callback(null, chunk)
+        }, function(callback) {
+          try {
+            expect(process.env.STARK).to.equal("direwolf");
+            expect(process.env.BARATHEON).to.equal("stag");
+            expect(process.env.LANNISTER).to.equal("lion");
+          } catch (e) {
+            return callback(e);
+          }
+          return callback();
+        }))
+        .pipe(envs.reset)
+        .pipe(through2.obj(function(chunk, enc, callback) {
+          // Pass through
+          callback(null, chunk)
+        }, function(callback) {
+          try {
+            expect(process.env.STARK).to.not.exist;
+            expect(process.env.BARATHEON).to.not.exist;
+            expect(process.env.LANNISTER).to.not.exist;
+          } catch (e) {
+            return callback(e);
+          }
+          return callback();
+        }))
+        .on('end', done)
+        .on('data', function() {})
+        .on('error', done);
+    });
+
+    it('should not resolve conflicting keys', function(done) {
+      var envs = env.set({
+        STARK: "direwolf",
+        BARATHEON: "stag",
+        LANNISTER: "lion",
+      });
+      gulp.src('test/mock-env-json.txt')
+        .pipe(envs)
+        .pipe(through2.obj(function(chunk, enc, callback) {
+          // Pass through
+          callback(null, chunk)
+        }, function(callback) {
+          try {
+            expect(process.env.STARK).to.equal("direwolf");
+            expect(process.env.BARATHEON).to.equal("stag");
+            expect(process.env.LANNISTER).to.equal("lion");
+          } catch (e) {
+            return callback(e);
+          }
+          process.env.STARK = "blarg";
+          return callback();
+        }))
+        .pipe(envs.reset)
+        .pipe(through2.obj(function(chunk, enc, callback) {
+          // Pass through
+          callback(null, chunk)
+        }, function(callback) {
+          try {
+            expect(process.env.STARK).to.equal("blarg");
+            expect(process.env.BARATHEON).to.not.exist;
+            expect(process.env.LANNISTER).to.not.exist;
+          } catch (e) {
+            return callback(e);
+          }
+          return callback();
+        }))
+        .on('end', done)
+        .on('data', function() {})
+        .on('error', done);
+    });
+
+    it('should ignore conflicts when passed as `.force`', function(done) {
+      var envs = env.set({
+        STARK: "direwolf",
+        BARATHEON: "stag",
+        LANNISTER: "lion",
+      });
+      gulp.src('test/mock-env-json.txt')
+        .pipe(envs)
+        .pipe(through2.obj(function(chunk, enc, callback) {
+          // Pass through
+          callback(null, chunk)
+        }, function(callback) {
+          try {
+            expect(process.env.STARK).to.equal("direwolf");
+            expect(process.env.BARATHEON).to.equal("stag");
+            expect(process.env.LANNISTER).to.equal("lion");
+          } catch (e) {
+            return callback(e);
+          }
+          process.env.STARK = "blarg";
+          return callback();
+        }))
+        .pipe(envs.reset.force)
+        .pipe(through2.obj(function(chunk, enc, callback) {
+          // Pass through
+          callback(null, chunk)
+        }, function(callback) {
+          try {
+            expect(process.env.STARK).to.not.exist;
+            expect(process.env.BARATHEON).to.not.exist;
+            expect(process.env.LANNISTER).to.not.exist;
+          } catch (e) {
+            return callback(e);
+          }
+          return callback();
+        }))
         .on('end', done)
         .on('data', function() {})
         .on('error', done);
